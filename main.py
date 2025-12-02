@@ -1,9 +1,20 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-class AutoEncoder(nn.Module):
+transform = transforms.Compose([
+    transforms.ToTensor(),
+])
+
+training_dataset = datasets.MNIST('./data', train=True, download=True, transform=transform)
+train_loader = DataLoader(training_dataset, batch_size=128, shuffle=True)
+
+class VAE(nn.Module):
     def __init__(self, input_dim=784, hidden_dim=400, latent_dim=20):
         super().__init__()
 
@@ -45,3 +56,29 @@ class AutoEncoder(nn.Module):
         kl_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
         return recon_loss + kl_loss
+
+vae = VAE().to(device)
+optimizer = torch.optim.Adam(vae.parameters(), lr=1e-3)
+
+def train(epoch):
+    vae.train()
+    train_loss = 0
+    for batch_idx, (data, _) in enumerate(train_loader):
+        data = data.view(-1, 784).to(device)
+        optimizer.zero_grad()
+
+        recon_batch, mu, logvar = vae(data)
+        loss = vae.vae_loss(recon_batch, data, mu, logvar)
+
+        loss.backward()
+        train_loss += loss.item()
+        optimizer.step()
+
+        if batch_idx % 100 == 0:
+            print(f'Epoch {epoch} [{batch_idx * len(data)}/{len(train_loader.dataset)}] '
+                  f'Loss: {loss.item() / len(data):.4f}')
+
+for epoch in range(1, 100):
+    train(epoch)
+
+torch.save(vae.state_dict(), 'vae_mnist.pth')
