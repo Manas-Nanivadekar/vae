@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class AutoEncoder(nn.Module):
     def __init__(self, input_dim=784, hidden_dim=400, latent_dim=20):
         super().__init__()
@@ -18,13 +19,20 @@ class AutoEncoder(nn.Module):
         mu = self.fc_mu(h)
         logvar = self.fc_logvar(h)
         return mu, logvar
-    
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        z = mu + eps * std
+        return z
+
     def decode(self, z):
         h = F.relu(self.fc3(z))
         x_recon = torch.sigmoid(self.fc4(h))
         return x_recon
-    
+
     def forward(self, x):
-        z = self.encode(x)
+        mu, logvar = self.encode(x)
+        z = self.reparameterize(mu, logvar)
         x_recon = self.decode(z)
-        return x_recon, z
+        return x_recon, mu, logvar
