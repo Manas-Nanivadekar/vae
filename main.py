@@ -36,3 +36,12 @@ class AutoEncoder(nn.Module):
         z = self.reparameterize(mu, logvar)
         x_recon = self.decode(z)
         return x_recon, mu, logvar
+
+    def vae_loss(self, x_recon, x, mu, logvar):
+        recon_loss = F.binary_cross_entropy(x_recon, x, reduction="sum")
+        # -mu.pow(2) pushes μ toward 0
+        # -logvar.exp() (which is -σ²) pushes variance toward 1
+        # 1 + logvar prevents variance from collapsing to 0
+        kl_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+        return recon_loss + kl_loss
