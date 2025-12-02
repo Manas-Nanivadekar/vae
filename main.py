@@ -81,4 +81,18 @@ def train(epoch):
 for epoch in range(1, 100):
     train(epoch)
 
+def generate_digits(n_samples=16):
+    vae.eval()
+    with torch.no_grad():
+        z = torch.randn(n_samples, 20).to(device)
+        samples = vae.decode(z).cpu()
+        return samples.view(-1, 28, 28)
+
+samples = generate_digits(16)
+fig, axes = plt.subplots(4, 4, figsize=(8, 8))
+for i, ax in enumerate(axes.flat):
+    ax.imshow(samples[i], cmap='gray')
+    ax.axis('off')
+plt.show()
+
 torch.save(vae.state_dict(), 'vae_mnist.pth')
